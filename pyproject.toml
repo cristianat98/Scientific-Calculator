@@ -35,3 +35,31 @@ exclude_commit_patterns = ["^bump: version "]
 
 [tool.semantic_release.changelog.default_templates]
 changelog_file = "CHANGELOG.md"
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.mypy]
+python_version = "3.14"
+mypy_path = "src"
+files = ["src", "tests"]
+check_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+qt_api = "pyside6"
+
+[tool.coverage.run]
+source = ["scientific_calculator"]
+branch = true
+relative_files = true
+
+[tool.coverage.xml]
+output = "coverage.xml"

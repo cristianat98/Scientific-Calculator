@@ -40,9 +40,7 @@ def test_invalid_level_falls_back_to_info(
     monkeypatch.setenv(LOG_LEVEL_ENV_VAR, "VERBOSE")
     configure_logging()
     assert logging.getLogger().level == logging.INFO
-    assert any(
-        r.levelno == logging.WARNING and "VERBOSE" in r.getMessage() for r in caplog.records
-    )
+    assert any(r.levelno == logging.WARNING and "VERBOSE" in r.getMessage() for r in caplog.records)
 
 
 def test_reconfiguring_replaces_previous_handler() -> None:

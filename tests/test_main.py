@@ -27,9 +27,7 @@ def test_smoke_mode_exits_zero_and_logs_version(
     qtbot: QtBot, caplog: pytest.LogCaptureFixture
 ) -> None:
     assert main(["--smoke"]) == 0
-    assert any(
-        r.levelno == logging.INFO and __version__ in r.getMessage() for r in caplog.records
-    )
+    assert any(r.levelno == logging.INFO and __version__ in r.getMessage() for r in caplog.records)
 
 
 def test_module_entry_point_smoke() -> None:
