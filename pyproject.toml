@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling>=1.33"]
+build-backend = "hatchling.build"
+
+[project]
+name = "scientific-calculator"
+version = "0.0.0"
+description = "Extensible desktop scientific calculator with function graphing."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.14"
+dependencies = ["PySide6-Essentials>=6.12,<7"]
+
+[project.gui-scripts]
+scientific-calculator = "scientific_calculator.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/scientific_calculator"]
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+version_variables = ["src/scientific_calculator/__init__.py:__version__"]
+tag_format = "v{version}"
+commit_message = "bump: version {version} [skip ci]"
+allow_zero_version = true
+major_on_zero = false
+
+[tool.semantic_release.branches.main]
+match = "master"
+
+[tool.semantic_release.changelog]
+mode = "update"
+exclude_commit_patterns = ["^bump: version "]
+
+[tool.semantic_release.changelog.default_templates]
+changelog_file = "CHANGELOG.md"
