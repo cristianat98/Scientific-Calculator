@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Coverage
+.coverage
+coverage.xml
+htmlcov/
+
+# Build / PyInstaller
+build/
+dist/
+
+# Agent working documents and worktrees
+.worktrees/
+docs/plans/
+docs/brainstorms/
