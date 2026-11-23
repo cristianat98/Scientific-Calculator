@@ -1,24 +1,11 @@
 import logging
 import sys
-from collections.abc import Iterator
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 import pytest
 
 from scientific_calculator.logging_config import LOG_LEVEL_ENV_VAR, configure_logging
-
-
-@pytest.fixture(autouse=True)
-def restore_root_logger() -> Iterator[None]:
-    root = logging.getLogger()
-    handlers, level = root.handlers[:], root.level
-    yield
-    for handler in root.handlers[:]:
-        if handler not in handlers:
-            root.removeHandler(handler)
-            handler.close()
-    root.setLevel(level)
 
 
 def test_default_level_is_info(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -44,10 +31,11 @@ def test_invalid_level_falls_back_to_info(
 
 
 def test_reconfiguring_replaces_previous_handler() -> None:
+    root = logging.getLogger()
     configure_logging()
+    handler_count = len(root.handlers)
     configure_logging()
-    stream_handlers = [h for h in logging.getLogger().handlers if type(h) is logging.StreamHandler]
-    assert len(stream_handlers) == 1
+    assert len(root.handlers) == handler_count
 
 
 @pytest.mark.parametrize(
