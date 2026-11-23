@@ -26,15 +26,14 @@ flowchart LR
   pc --> test["pytest + coverage<br/>(Qt offscreen)"]
   test --> sonar["SonarCloud scan"]
   sonar --> gate["quality gate"]
+  gate -->|"push to master"| release["release job: calls the Release workflow"]
 ```
 
 ## Release (Release workflow)
 
 ```mermaid
 flowchart TB
-  done["Check code completed on master"] --> ok{"success, push event,<br/>not a 'bump: version' commit?"}
-  ok -->|no| skip1["skip"]
-  ok -->|yes| tip{"master still at the checked commit?"}
+  done["Check code passed on a push to master<br/>(not a 'bump: version' commit)"] --> tip{"master still at the checked commit?"}
   tip -->|no| skip2["skip (the newer commit's run releases)"]
   tip -->|yes| psr["python-semantic-release:<br/>version bump commit, CHANGELOG.md, tag"]
   psr -->|no releasable commits| skip3["no release"]

@@ -1,10 +1,8 @@
 name: Release
 
 on:
-  workflow_run:
-    workflows: [Check code]
-    types: [completed]
-    branches: [master]
+  # Called by the Check code workflow once every check passed on a push to master.
+  workflow_call:
   # Rebuilds and publishes an existing tag, e.g. after a failed build.
   workflow_dispatch:
     inputs:
@@ -22,12 +20,7 @@ permissions:
 
 jobs:
   release:
-    # Only after a green check of a push to master, and never for the release's own bump commit.
-    if: >-
-      github.event_name == 'workflow_run' &&
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
-      !startsWith(github.event.workflow_run.head_commit.message, 'bump: version ')
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -43,7 +36,7 @@ jobs:
       - name: Check master is still at the checked commit
         id: tip
         env:
-          CHECKED_SHA: ${{ github.event.workflow_run.head_sha }}
+          CHECKED_SHA: ${{ github.sha }}
         run: |
           if [ "$(git rev-parse HEAD)" = "$CHECKED_SHA" ]; then
             echo "current=true" >> "$GITHUB_OUTPUT"
@@ -54,7 +47,7 @@ jobs:
       - name: Semantic release
         id: release
         if: steps.tip.outputs.current == 'true'
-        uses: python-semantic-release/python-semantic-release@v10.7.0
+        uses: python-semantic-release/python-semantic-release@b700dbeb1f431a0fcc30a79f3f0869407fe07278 # v10.7.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           # The GitHub Release is published only after every build passes (publish job).
@@ -95,7 +88,7 @@ jobs:
           cache-dependency-path: requirements*.txt
       - if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libegl1 libxkbcommon0 libgl1 libdbus-1-3
-      - run: pip install -r requirements-dev.txt .
+      - run: 'pip install --only-binary :all: --require-hashes -r requirements-dev.txt'
       - run: pyinstaller --noconfirm scientific-calculator.spec
 
       - name: Smoke test and archive (Linux)

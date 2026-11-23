@@ -13,8 +13,19 @@ Requires Python 3.14.
 
 ```bash
 python3.14 -m venv .venv
-.venv/bin/pip install -r requirements-dev.txt -e .
+.venv/bin/pip install --only-binary :all: --require-hashes -r requirements-dev.txt
+.venv/bin/pip install --no-deps -e .
 .venv/bin/pre-commit install
+```
+
+`requirements.txt` and `requirements-dev.txt` are lock files (every transitive dependency,
+with hashes, for Linux, Windows and macOS). Edit the direct dependencies in `requirements.in` /
+`requirements-dev.in` (and the ranges in `pyproject.toml`), then regenerate both locks with
+[uv](https://docs.astral.sh/uv/):
+
+```bash
+uv pip compile --universal --generate-hashes --python-version 3.14 --no-header requirements.in -o requirements.txt
+uv pip compile --universal --generate-hashes --python-version 3.14 --no-header requirements-dev.in -o requirements-dev.txt
 ```
 
 On Linux, Qt needs the usual desktop libraries (for example `libegl1`, `libxkbcommon0`,
@@ -55,6 +66,7 @@ Both must pass before every push:
 
 CI (`.github/workflows/check-code.yml`) runs pre-commit, the tests with coverage, and the
 SonarCloud analysis with its quality gate on every pull request and every push to `master`.
+On a push to `master`, a final job then runs the release workflow (`.github/workflows/release.yml`).
 
 ## Branching and releases
 
