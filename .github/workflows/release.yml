@@ -5,6 +5,13 @@ on:
     workflows: [Check code]
     types: [completed]
     branches: [master]
+  # Rebuilds and publishes an existing tag, e.g. after a failed build.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to build and publish (e.g. v0.1.0)
+        required: true
+        type: string
 
 concurrency:
   group: release
@@ -17,6 +24,7 @@ jobs:
   release:
     # Only after a green check of a push to master, and never for the release's own bump commit.
     if: >-
+      github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
       !startsWith(github.event.workflow_run.head_commit.message, 'bump: version ')
@@ -26,6 +34,7 @@ jobs:
     outputs:
       released: ${{ steps.release.outputs.released }}
       tag: ${{ steps.release.outputs.tag }}
+      release_notes: ${{ steps.release.outputs.release_notes }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -48,10 +57,14 @@ jobs:
         uses: python-semantic-release/python-semantic-release@v10.7.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          # The GitHub Release is published only after every build passes (publish job).
+          vcs_release: "false"
 
   build:
     needs: release
-    if: needs.release.outputs.released == 'true'
+    if: >-
+      always() &&
+      (github.event_name == 'workflow_dispatch' || needs.release.outputs.released == 'true')
     strategy:
       fail-fast: false
       matrix:
@@ -63,10 +76,9 @@ jobs:
           - os: macos-latest
             target: macos-arm64
     runs-on: ${{ matrix.os }}
-    permissions:
-      contents: write
+    timeout-minutes: 30
     env:
-      TAG: ${{ needs.release.outputs.tag }}
+      TAG: ${{ inputs.tag || needs.release.outputs.tag }}
       QT_QPA_PLATFORM: offscreen
     defaults:
       run:
@@ -74,7 +86,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ needs.release.outputs.tag }}
+          ref: ${{ env.TAG }}
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
           python-version: "3.14"
@@ -87,11 +100,13 @@ jobs:
 
       - name: Smoke test and archive (Linux)
         if: runner.os == 'Linux'
+        timeout-minutes: 5
         run: |
           dist/scientific-calculator/scientific-calculator --smoke
           tar -C dist -czf "scientific-calculator-$TAG-${{ matrix.target }}.tar.gz" scientific-calculator
       - name: Smoke test (Windows)
         if: runner.os == 'Windows'
+        timeout-minutes: 5
         shell: pwsh
         # A windowed exe does not block the shell, so wait for it explicitly.
         run: |
@@ -103,11 +118,41 @@ jobs:
         run: Compress-Archive -Path dist/scientific-calculator -DestinationPath "scientific-calculator-$env:TAG-${{ matrix.target }}.zip"
       - name: Smoke test and archive (macOS)
         if: runner.os == 'macOS'
+        timeout-minutes: 5
         run: |
           "dist/Scientific Calculator.app/Contents/MacOS/scientific-calculator" --smoke
           ditto -c -k --keepParent "dist/Scientific Calculator.app" "scientific-calculator-$TAG-${{ matrix.target }}.zip"
 
-      - name: Upload to the GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "$TAG" scientific-calculator-"$TAG"-${{ matrix.target }}.* --clobber
+      - uses: actions/upload-artifact@v7
+        with:
+          name: build-${{ matrix.target }}
+          path: scientific-calculator-${{ env.TAG }}-${{ matrix.target }}.*
+          if-no-files-found: error
+
+  publish:
+    needs: [release, build]
+    if: always() && needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ inputs.tag || needs.release.outputs.tag }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_NOTES: ${{ needs.release.outputs.release_notes }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: build-*
+          path: assets
+          merge-multiple: true
+      - name: Publish the GitHub Release with the builds
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" assets/* --clobber
+          elif [ -n "$RELEASE_NOTES" ]; then
+            printf '%s\n' "$RELEASE_NOTES" > notes.md
+            gh release create "$TAG" assets/* --verify-tag --title "$TAG" --notes-file notes.md
+          else
+            gh release create "$TAG" assets/* --verify-tag --title "$TAG" --generate-notes
+          fi

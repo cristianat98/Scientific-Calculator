@@ -65,7 +65,10 @@ SonarCloud analysis with its quality gate on every pull request and every push t
   the GitHub Release. `feat` gives a minor bump and `fix`/`perf` a patch bump; other types
   do not release.
 - Each release carries desktop builds: Linux x86_64 (`.tar.gz`), Windows x86_64 and macOS
-  Apple Silicon (`.zip`).
+  Apple Silicon (`.zip`). The GitHub Release is published only after all three builds pass
+  their `--smoke` launch check. If a build fails, the tag exists without a release: fix the
+  cause and run the Release workflow manually (Actions -> Release -> Run workflow) with that
+  tag to rebuild and publish it.
 
 ### First launch of the downloaded builds
 

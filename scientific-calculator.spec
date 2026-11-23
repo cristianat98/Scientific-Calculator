@@ -14,6 +14,8 @@ exe = EXE(
     exclude_binaries=True,
     name="scientific-calculator",
     console=False,
+    # Exit on a start-up crash instead of waiting on an error dialog (keeps CI smoke tests from hanging).
+    disable_windowed_traceback=True,
 )
 coll = COLLECT(exe, a.binaries, a.datas, name="scientific-calculator")
 
